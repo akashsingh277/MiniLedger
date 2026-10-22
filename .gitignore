@@ -1,0 +1,23 @@
+
+# Secrets and environment variables
+.env
+.env.*
+!.env.example
+backend/.env
+mobile/.env
+
+# Dependencies
+node_modules/
+backend/node_modules/
+mobile/node_modules/
+
+# Build output
+backend/dist/
+mobile/dist/
+mobile/.expo/
+
+# Logs and local files
+*.log
+.DS_Store
+# Local editor and AI tooling
+mobile/.claude/
