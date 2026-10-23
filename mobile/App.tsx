@@ -1,9 +1,10 @@
-
+import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -38,6 +39,13 @@ const emptySummary: Summary = {
   totalRepaid: 0,
   overdueAmount: 0,
 };
+function formatDateLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
 
 function money(value: number) {
   return `₹${Number(value || 0).toLocaleString('en-IN', {
@@ -66,6 +74,8 @@ export default function App() {
   const [friendName, setFriendName] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   const apiRequest = async (path: string, options: RequestInit = {}) => {
     if (!API_URL) {
@@ -397,15 +407,74 @@ if (!validDate) {
               onChangeText={setAmount}
             />
             <Text style={styles.label}>Due date</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#8A94A6"
-              value={dueDate}
-              onChangeText={setDueDate}
-              maxLength={10}
-              autoCapitalize="none"
-            />
+            <TouchableOpacity
+              style={[styles.input, { justifyContent: 'center' }]}
+              onPress={() => {
+                const initialDate = dueDate
+                  ? new Date(`${dueDate}T12:00:00`)
+                  : new Date();
+
+                setSelectedDate(
+                  Number.isNaN(initialDate.getTime()) ? new Date() : initialDate
+                );
+                setShowDatePicker(true);
+              }}
+            >
+              <Text style={{ color: dueDate ? '#17251C' : '#8A94A6', fontSize: 16 }}>
+                {dueDate || 'Select due date'}
+              </Text>
+            </TouchableOpacity>
+
+            {Platform.OS === 'android' && showDatePicker && (
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display="default"
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+
+                  if (event.type === 'set' && date) {
+                    setSelectedDate(date);
+                    setDueDate(formatDateLocal(date));
+                  }
+                }}
+              />
+            )}
+
+            {Platform.OS === 'ios' && (
+              <Modal
+                visible={showDatePicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowDatePicker(false)}
+              >
+                <View style={styles.datePickerOverlay}>
+                  <View style={styles.datePickerModal}>
+                    <View style={styles.datePickerHeader}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                        <Text style={styles.datePickerAction}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setDueDate(formatDateLocal(selectedDate));
+                          setShowDatePicker(false);
+                        }}
+                      >
+                        <Text style={styles.datePickerAction}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={selectedDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={(_event, date) => {
+                        if (date) setSelectedDate(date);
+                      }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            )}
             <TouchableOpacity style={styles.button} disabled={loading} onPress={addLoan}>
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save loan</Text>}
             </TouchableOpacity>
@@ -473,6 +542,10 @@ const styles = StyleSheet.create({
   muted: { fontSize: 13, color: '#778178', marginTop: 5, lineHeight: 19 },
   label: { fontSize: 13, fontWeight: '600', color: '#37463C', marginBottom: 8, marginTop: 14 },
   input: { minHeight: 50, borderWidth: 1, borderColor: '#DCE4DE', borderRadius: 12, paddingHorizontal: 14, fontSize: 16, color: '#17251C', backgroundColor: '#FCFDFC' },
+  datePickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.35)' },
+  datePickerModal: { backgroundColor: '#FFFFFF', paddingBottom: 24 },
+  datePickerHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E5EBE7' },
+  datePickerAction: { color: '#166534', fontSize: 16, fontWeight: '700' },
   button: { minHeight: 52, backgroundColor: '#166534', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   secondaryButton: { alignItems: 'center', paddingTop: 18 },
